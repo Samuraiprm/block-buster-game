@@ -134,7 +134,10 @@ class BlockBuster {
     
     processMatches() {
         let found = true;
-        while (found) {
+        let iterations = 0;
+        const maxIterations = 100;
+        while (found && iterations < maxIterations) {
+            iterations++;
             found = false;
             const toDestroy = new Set();
             
