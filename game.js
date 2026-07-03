@@ -359,9 +359,12 @@ class BlockBuster {
     }
     
     showMessage(text) {
+        if (this.messageTimeout) {
+            clearTimeout(this.messageTimeout);
+        }
         this.messageEl.textContent = text;
         this.messageEl.classList.remove('hidden');
-        setTimeout(() => this.messageEl.classList.add('hidden'), 2000);
+        this.messageTimeout = setTimeout(() => this.messageEl.classList.add('hidden'), 2000);
     }
     
     nextLevel() {
