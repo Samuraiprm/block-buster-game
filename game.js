@@ -3,6 +3,14 @@ class BlockBuster {
         this.board = [];
         this.boardSize = 6;
         this.colors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+        this.colorIcons = {
+            red: '🔴',
+            blue: '🔵',
+            green: '🟢',
+            yellow: '🟡',
+            purple: '🟣',
+            orange: '🟠'
+        };
         this.selectedBlock = null;
         this.score = 0;
         this.level = 1;
@@ -64,7 +72,7 @@ class BlockBuster {
                 
                 if (cell) {
                     block.classList.add(cell.color);
-                    block.textContent = cell.value;
+                    block.innerHTML = `<span class="block-icon">${this.colorIcons[cell.color]}</span><span class="block-value">${cell.value}</span>`;
                     block.dataset.x = x;
                     block.dataset.y = y;
                     block.tabIndex = 0;
