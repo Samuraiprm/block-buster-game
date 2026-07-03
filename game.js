@@ -8,6 +8,7 @@ class BlockBuster {
         this.level = 1;
         this.moves = 0;
         this.hintsUsed = 0;
+        this.blockElements = new Map();
         
         this.boardEl = document.getElementById('game-board');
         this.scoreEl = document.getElementById('score');
@@ -48,6 +49,7 @@ class BlockBuster {
     
     render() {
         this.boardEl.innerHTML = '';
+        this.blockElements.clear();
         const blockSize = window.innerWidth <= 400 ? 38 : 45;
         this.boardEl.style.gridTemplateColumns = `repeat(${this.boardSize}, ${blockSize}px)`;
         
@@ -68,6 +70,7 @@ class BlockBuster {
                 }
                 
                 this.boardEl.appendChild(block);
+                this.blockElements.set(`${x},${y}`, block);
             }
         }
     }
@@ -114,7 +117,7 @@ class BlockBuster {
     }
     
     getBlockElement(x, y) {
-        return this.boardEl.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+        return this.blockElements.get(`${x},${y}`);
     }
     
     isAdjacent(x1, y1, x2, y2) {
