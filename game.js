@@ -11,34 +11,48 @@ class BlockBuster {
             purple: '🟣',
             orange: '🟠'
         };
-        this.selectedBlock = null;
+        this.selectedBlocks = [];
         this.score = 0;
         this.level = 1;
         this.moves = 0;
-        this.hintsUsed = 0;
         this.blockElements = new Map();
+        this.messageTimeout = null;
         
         this.boardEl = document.getElementById('game-board');
         this.scoreEl = document.getElementById('score');
         this.levelEl = document.getElementById('level');
         this.movesEl = document.getElementById('moves');
         this.messageEl = document.getElementById('message');
-        this.hintsCountEl = document.getElementById('hints-count');
+        this.selectedCountEl = document.getElementById('selected-count');
+        this.confirmBtn = document.getElementById('confirm-btn');
+        this.instructionsModal = document.getElementById('instructions-modal');
         
+        document.getElementById('confirm-btn').addEventListener('click', () => this.confirmSelection());
+        document.getElementById('deselect-btn').addEventListener('click', () => this.deselectAll());
         document.getElementById('hint-btn').addEventListener('click', () => this.showHint());
         document.getElementById('new-game-btn').addEventListener('click', () => this.nextLevel());
-        document.getElementById('reset-btn').addEventListener('click', () => this.resetGame());
+        document.getElementById('start-btn').addEventListener('click', () => this.startGame());
         
-        this.focusedBlock = { x: 0, y: 0 };
         document.addEventListener('keydown', (e) => this.handleKeyDown(e));
         
+        this.showInstructions();
+    }
+    
+    showInstructions() {
+        this.instructionsModal.classList.remove('hidden');
+    }
+    
+    startGame() {
+        this.instructionsModal.classList.add('hidden');
         this.init();
     }
     
     init() {
+        this.selectedBlocks = [];
         this.generateBoard();
         this.render();
         this.updateStats();
+        this.updateSelectionInfo();
     }
     
     generateBoard() {
@@ -52,7 +66,9 @@ class BlockBuster {
                 const colorIndex = Math.floor(Math.random() * this.colors.length);
                 this.board[y][x] = {
                     color: this.colors[colorIndex],
-                    value: Math.floor(Math.random() * 5) + 1
+                    value: Math.floor(Math.random() * 5) + 1,
+                    x: x,
+                    y: y
                 };
             }
         }
@@ -91,123 +107,94 @@ class BlockBuster {
         const cell = this.board[y][x];
         if (!cell) return;
         
-        if (this.selectedBlock) {
-            const prev = this.selectedBlock;
-            
-            if (prev.x === x && prev.y === y) {
-                this.deselectBlock();
+        const existingIndex = this.selectedBlocks.findIndex(b => b.x === x && b.y === y);
+        
+        if (existingIndex !== -1) {
+            this.selectedBlocks.splice(existingIndex, 1);
+        } else {
+            if (this.selectedBlocks.length >= 5) {
+                this.showMessage('Максимум 5 блоков!');
                 return;
             }
             
-            if (this.isAdjacent(prev.x, prev.y, x, y)) {
-                this.swapBlocks(prev.x, prev.y, x, y);
-                this.deselectBlock();
-                this.moves++;
-                this.updateStats();
-                this.checkWin();
-            } else {
-                this.deselectBlock();
-                this.selectBlock(x, y);
+            if (this.selectedBlocks.length > 0) {
+                const firstColor = this.selectedBlocks[0].color;
+                if (cell.color !== firstColor) {
+                    this.showMessage('Выбирайте блоки одного цвета!');
+                    return;
+                }
             }
-        } else {
-            this.selectBlock(x, y);
+            
+            this.selectedBlocks.push(cell);
         }
+        
+        this.updateSelectionVisuals();
+        this.updateSelectionInfo();
     }
     
-    selectBlock(x, y) {
-        this.selectedBlock = { x, y };
-        const block = this.getBlockElement(x, y);
-        if (block) block.classList.add('selected');
+    updateSelectionVisuals() {
+        this.blockElements.forEach((block, key) => {
+            block.classList.remove('selected');
+        });
+        
+        this.selectedBlocks.forEach(cell => {
+            const block = this.getBlockElement(cell.x, cell.y);
+            if (block) {
+                block.classList.add('selected');
+            }
+        });
     }
     
-    deselectBlock() {
-        if (this.selectedBlock) {
-            const block = this.getBlockElement(this.selectedBlock.x, this.selectedBlock.y);
-            if (block) block.classList.remove('selected');
-            this.selectedBlock = null;
+    updateSelectionInfo() {
+        this.selectedCountEl.textContent = this.selectedBlocks.length;
+        this.confirmBtn.disabled = this.selectedBlocks.length < 3 || this.selectedBlocks.length > 5;
+    }
+    
+    confirmSelection() {
+        if (this.selectedBlocks.length < 3 || this.selectedBlocks.length > 5) {
+            this.showMessage('Нужно от 3 до 5 блоков!');
+            return;
         }
+        
+        const color = this.selectedBlocks[0].color;
+        const allSameColor = this.selectedBlocks.every(b => b.color === color);
+        
+        if (!allSameColor) {
+            this.showMessage('Все блоки должны быть одного цвета!');
+            return;
+        }
+        
+        this.selectedBlocks.forEach(cell => {
+            this.score += cell.value * 10;
+            this.board[cell.y][cell.x] = null;
+            
+            const block = this.getBlockElement(cell.x, cell.y);
+            if (block) {
+                block.classList.add('destroying');
+            }
+        });
+        
+        this.moves++;
+        this.selectedBlocks = [];
+        
+        setTimeout(() => {
+            this.dropBlocks();
+            this.fillEmptySpaces();
+            this.render();
+            this.updateStats();
+            this.updateSelectionInfo();
+            this.checkWin();
+        }, 300);
+    }
+    
+    deselectAll() {
+        this.selectedBlocks = [];
+        this.updateSelectionVisuals();
+        this.updateSelectionInfo();
     }
     
     getBlockElement(x, y) {
         return this.blockElements.get(`${x},${y}`);
-    }
-    
-    isAdjacent(x1, y1, x2, y2) {
-        const dx = Math.abs(x1 - x2);
-        const dy = Math.abs(y1 - y2);
-        return (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
-    }
-    
-    swapBlocks(x1, y1, x2, y2) {
-        const temp = this.board[y1][x1];
-        this.board[y1][x1] = this.board[y2][x2];
-        this.board[y2][x2] = temp;
-        
-        this.processMatches();
-        this.render();
-    }
-    
-    processMatches() {
-        let found = true;
-        let iterations = 0;
-        const maxIterations = 100;
-        while (found && iterations < maxIterations) {
-            iterations++;
-            found = false;
-            const toDestroy = new Set();
-            
-            for (let y = 0; y < this.boardSize; y++) {
-                for (let x = 0; x < this.boardSize; x++) {
-                    const cell = this.board[y][x];
-                    if (!cell) continue;
-                    
-                    const matches = this.findMatches(x, y, cell.color);
-                    if (matches.length >= 3) {
-                        matches.forEach(m => toDestroy.add(`${m.x},${m.y}`));
-                        found = true;
-                    }
-                }
-            }
-            
-            if (found) {
-                toDestroy.forEach(key => {
-                    const [x, y] = key.split(',').map(Number);
-                    this.score += this.board[y][x].value * 10;
-                    this.board[y][x] = null;
-                });
-                
-                this.dropBlocks();
-                this.fillEmptySpaces();
-                this.updateStats();
-            }
-        }
-    }
-    
-    findMatches(startX, startY, color) {
-        const matches = [];
-        const visited = new Set();
-        const queue = [{x: startX, y: startY}];
-        
-        while (queue.length > 0) {
-            const {x, y} = queue.shift();
-            const key = `${x},${y}`;
-            
-            if (visited.has(key)) continue;
-            if (x < 0 || x >= this.boardSize || y < 0 || y >= this.boardSize) continue;
-            
-            const cell = this.board[y][x];
-            if (!cell || cell.color !== color) continue;
-            
-            visited.add(key);
-            matches.push({x, y});
-            
-            queue.push({x: x-1, y});
-            queue.push({x: x+1, y});
-            queue.push({x, y: y-1});
-            queue.push({x, y: y+1});
-        }
-        
-        return matches;
     }
     
     dropBlocks() {
@@ -237,8 +224,92 @@ class BlockBuster {
                     const colorIndex = Math.floor(Math.random() * this.colors.length);
                     this.board[y][x] = {
                         color: this.colors[colorIndex],
-                        value: Math.floor(Math.random() * 5) + 1
+                        value: Math.floor(Math.random() * 5) + 1,
+                        x: x,
+                        y: y
                     };
+                }
+            }
+        }
+    }
+    
+    checkWin() {
+        let hasBlocks = false;
+        
+        for (let y = 0; y < this.boardSize; y++) {
+            for (let x = 0; x < this.boardSize; x++) {
+                if (this.board[y][x]) {
+                    hasBlocks = true;
+                    break;
+                }
+            }
+            if (hasBlocks) break;
+        }
+        
+        if (!hasBlocks) {
+            this.showMessage('Уровень пройден! 🎉');
+            setTimeout(() => this.nextLevel(), 2000);
+        } else {
+            this.checkPossibleMoves();
+        }
+    }
+    
+    checkPossibleMoves() {
+        const colorGroups = {};
+        
+        for (let y = 0; y < this.boardSize; y++) {
+            for (let x = 0; x < this.boardSize; x++) {
+                const cell = this.board[y][x];
+                if (!cell) continue;
+                
+                if (!colorGroups[cell.color]) {
+                    colorGroups[cell.color] = [];
+                }
+                colorGroups[cell.color].push(cell);
+            }
+        }
+        
+        let hasPossibleMove = false;
+        for (const color in colorGroups) {
+            if (colorGroups[color].length >= 3) {
+                hasPossibleMove = true;
+                break;
+            }
+        }
+        
+        if (!hasPossibleMove) {
+            this.showMessage('Нет возможных ходов! Перемешиваем...');
+            setTimeout(() => {
+                this.shuffleBoard();
+                this.render();
+            }, 1500);
+        }
+    }
+    
+    shuffleBoard() {
+        const allBlocks = [];
+        
+        for (let y = 0; y < this.boardSize; y++) {
+            for (let x = 0; x < this.boardSize; x++) {
+                if (this.board[y][x]) {
+                    allBlocks.push(this.board[y][x]);
+                }
+            }
+        }
+        
+        for (let i = allBlocks.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [allBlocks[i], allBlocks[j]] = [allBlocks[j], allBlocks[i]];
+        }
+        
+        let index = 0;
+        for (let y = 0; y < this.boardSize; y++) {
+            for (let x = 0; x < this.boardSize; x++) {
+                if (this.board[y][x]) {
+                    this.board[y][x] = allBlocks[index];
+                    this.board[y][x].x = x;
+                    this.board[y][x].y = y;
+                    index++;
                 }
             }
         }
@@ -247,115 +318,42 @@ class BlockBuster {
     showHint() {
         this.clearHints();
         
-        const bestMove = this.findBestMove();
-        if (bestMove) {
-            const block1 = this.getBlockElement(bestMove.x1, bestMove.y1);
-            const block2 = this.getBlockElement(bestMove.x2, bestMove.y2);
-            
-            if (block1) block1.classList.add('hint');
-            if (block2) block2.classList.add('hint');
-            
-            this.hintsUsed++;
-            this.hintsCountEl.textContent = '∞';
-            
-            setTimeout(() => this.clearHints(), 2000);
+        const colorGroups = {};
+        
+        for (let y = 0; y < this.boardSize; y++) {
+            for (let x = 0; x < this.boardSize; x++) {
+                const cell = this.board[y][x];
+                if (!cell) continue;
+                
+                if (!colorGroups[cell.color]) {
+                    colorGroups[cell.color] = [];
+                }
+                colorGroups[cell.color].push(cell);
+            }
         }
+        
+        for (const color in colorGroups) {
+            if (colorGroups[color].length >= 3) {
+                const blocksToHint = colorGroups[color].slice(0, 5);
+                blocksToHint.forEach(cell => {
+                    const block = this.getBlockElement(cell.x, cell.y);
+                    if (block) {
+                        block.classList.add('hint');
+                    }
+                });
+                
+                setTimeout(() => this.clearHints(), 2000);
+                return;
+            }
+        }
+        
+        this.showMessage('Нет доступных ходов!');
     }
     
     clearHints() {
         this.boardEl.querySelectorAll('.hint').forEach(block => {
             block.classList.remove('hint');
         });
-    }
-    
-    findBestMove() {
-        let bestMove = null;
-        let bestScore = -1;
-        
-        for (let y = 0; y < this.boardSize; y++) {
-            for (let x = 0; x < this.boardSize; x++) {
-                if (!this.board[y][x]) continue;
-                
-                const directions = [
-                    {dx: 1, dy: 0},
-                    {dx: 0, dy: 1}
-                ];
-                
-                for (const dir of directions) {
-                    const nx = x + dir.dx;
-                    const ny = y + dir.dy;
-                    
-                    if (nx >= this.boardSize || ny >= this.boardSize) continue;
-                    if (!this.board[ny][nx]) continue;
-                    
-                    this.swapBlocksSilent(x, y, nx, ny);
-                    const score = this.calculateMoveScore();
-                    this.swapBlocksSilent(x, y, nx, ny);
-                    
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestMove = {x1: x, y1: y, x2: nx, y2: ny};
-                    }
-                }
-            }
-        }
-        
-        return bestMove;
-    }
-    
-    swapBlocksSilent(x1, y1, x2, y2) {
-        const temp = this.board[y1][x1];
-        this.board[y1][x1] = this.board[y2][x2];
-        this.board[y2][x2] = temp;
-    }
-    
-    calculateMoveScore() {
-        let score = 0;
-        const visited = new Set();
-        
-        for (let y = 0; y < this.boardSize; y++) {
-            for (let x = 0; x < this.boardSize; x++) {
-                const key = `${x},${y}`;
-                if (visited.has(key)) continue;
-                
-                const cell = this.board[y][x];
-                if (!cell) continue;
-                
-                const matches = this.findMatches(x, y, cell.color);
-                if (matches.length >= 3) {
-                    matches.forEach(m => visited.add(`${m.x},${m.y}`));
-                    score += matches.length * 10;
-                }
-            }
-        }
-        
-        return score;
-    }
-    
-    checkWin() {
-        let hasMatches = false;
-        const visited = new Set();
-        
-        for (let y = 0; y < this.boardSize; y++) {
-            for (let x = 0; x < this.boardSize; x++) {
-                const key = `${x},${y}`;
-                if (visited.has(key)) continue;
-                
-                const cell = this.board[y][x];
-                if (!cell) continue;
-                
-                const matches = this.findMatches(x, y, cell.color);
-                if (matches.length >= 3) {
-                    hasMatches = true;
-                    matches.forEach(m => visited.add(`${m.x},${m.y}`));
-                }
-            }
-        }
-        
-        if (!hasMatches) {
-            this.showMessage('Уровень пройден! 🎉');
-            setTimeout(() => this.nextLevel(), 2000);
-        }
     }
     
     showMessage(text) {
@@ -370,19 +368,22 @@ class BlockBuster {
     nextLevel() {
         this.level++;
         this.moves = 0;
+        this.selectedBlocks = [];
         this.generateBoard();
         this.render();
         this.updateStats();
+        this.updateSelectionInfo();
     }
     
     resetGame() {
         this.score = 0;
         this.level = 1;
         this.moves = 0;
-        this.hintsUsed = 0;
+        this.selectedBlocks = [];
         this.generateBoard();
         this.render();
         this.updateStats();
+        this.updateSelectionInfo();
     }
     
     updateStats() {
@@ -392,49 +393,29 @@ class BlockBuster {
     }
     
     handleKeyDown(e) {
-        const { x, y } = this.focusedBlock;
-        let newX = x;
-        let newY = y;
-        
-        switch (e.key) {
-            case 'ArrowUp':
-                newY = Math.max(0, y - 1);
+        if (!this.instructionsModal.classList.contains('hidden')) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                this.startGame();
                 e.preventDefault();
-                break;
-            case 'ArrowDown':
-                newY = Math.min(this.boardSize - 1, y + 1);
-                e.preventDefault();
-                break;
-            case 'ArrowLeft':
-                newX = Math.max(0, x - 1);
-                e.preventDefault();
-                break;
-            case 'ArrowRight':
-                newX = Math.min(this.boardSize - 1, x + 1);
-                e.preventDefault();
-                break;
-            case 'Enter':
-            case ' ':
-                this.onBlockClick(x, y);
-                e.preventDefault();
-                return;
-            case 'h':
-                this.showHint();
-                return;
-            default:
-                return;
+            }
+            return;
         }
         
-        this.focusedBlock = { x: newX, y: newY };
-        this.updateFocus();
-    }
-    
-    updateFocus() {
-        this.boardEl.querySelectorAll('.focused').forEach(el => el.classList.remove('focused'));
-        const block = this.getBlockElement(this.focusedBlock.x, this.focusedBlock.y);
-        if (block) {
-            block.classList.add('focused');
-            block.focus();
+        switch (e.key) {
+            case 'Enter':
+            case ' ':
+                if (this.selectedBlocks.length >= 3) {
+                    this.confirmSelection();
+                }
+                e.preventDefault();
+                break;
+            case 'Escape':
+                this.deselectAll();
+                e.preventDefault();
+                break;
+            case 'h':
+                this.showHint();
+                break;
         }
     }
 }

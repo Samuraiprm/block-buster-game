@@ -29,24 +29,60 @@
         <main>
             <div id="game-board"></div>
             
+            <div class="selection-info" id="selection-info">
+                <span>Выбрано: <strong id="selected-count">0</strong> / 3-5 блоков</span>
+            </div>
+            
             <div class="controls">
-                <button id="hint-btn" class="btn hint" aria-label="Показать подсказку">
+                <button id="confirm-btn" class="btn confirm" disabled>
+                    <span class="icon">✓</span>
+                    <span class="text">Подтвердить</span>
+                </button>
+                <button id="deselect-btn" class="btn deselect">
+                    <span class="icon">✕</span>
+                    <span class="text">Снять выделение</span>
+                </button>
+                <button id="hint-btn" class="btn hint">
                     <span class="icon">💡</span>
                     <span class="text">Подсказка</span>
-                    <span id="hints-count" class="badge">∞</span>
                 </button>
-                <button id="new-game-btn" class="btn new-game" aria-label="Перейти на следующий уровень">
+                <button id="new-game-btn" class="btn new-game">
                     <span class="icon">🔄</span>
                     <span class="text">Новый уровень</span>
-                </button>
-                <button id="reset-btn" class="btn reset" aria-label="Начать игру сначала">
-                    <span class="icon">◀️</span>
-                    <span class="text">Начать сначала</span>
                 </button>
             </div>
         </main>
 
         <div id="message" class="hidden"></div>
+
+        <div id="instructions-modal" class="modal">
+            <div class="modal-content">
+                <h2>Как играть</h2>
+                <div class="instructions">
+                    <div class="instruction-step">
+                        <span class="step-number">1</span>
+                        <p>Нажимайте на блоки, чтобы их выбрать</p>
+                    </div>
+                    <div class="instruction-step">
+                        <span class="step-number">2</span>
+                        <p>Можно выбрать <strong>от 3 до 5 блоков</strong> одного цвета</p>
+                    </div>
+                    <div class="instruction-step">
+                        <span class="step-number">3</span>
+                        <p>Нажмите <strong>«Подтвердить»</strong> чтобы убрать выбранные блоки</p>
+                    </div>
+                    <div class="instruction-step">
+                        <span class="step-number">4</span>
+                        <p>Цель — <strong>очистить поле</strong> от всех блоков</p>
+                    </div>
+                    <div class="instruction-step">
+                        <span class="step-number">5</span>
+                        <p>Используйте <strong>💡 Подсказку</strong> если застряли</p>
+                    </div>
+                </div>
+                <button id="start-btn" class="btn start">Начать игру</button>
+            </div>
+        </div>
     </div>
 
     <script src="game.js"></script>
