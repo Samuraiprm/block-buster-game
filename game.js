@@ -48,7 +48,8 @@ class BlockBuster {
     
     render() {
         this.boardEl.innerHTML = '';
-        this.boardEl.style.gridTemplateColumns = `repeat(${this.boardSize}, 45px)`;
+        const blockSize = window.innerWidth <= 400 ? 38 : 45;
+        this.boardEl.style.gridTemplateColumns = `repeat(${this.boardSize}, ${blockSize}px)`;
         
         for (let y = 0; y < this.boardSize; y++) {
             for (let x = 0; x < this.boardSize; x++) {
