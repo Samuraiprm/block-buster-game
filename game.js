@@ -340,7 +340,7 @@ class BlockBuster {
             }
         }
         
-        if (!hasMatches && this.moves >= 3) {
+        if (!hasMatches) {
             this.showMessage('Уровень пройден! 🎉');
             setTimeout(() => this.nextLevel(), 2000);
         }
