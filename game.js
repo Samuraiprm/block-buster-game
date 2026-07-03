@@ -21,6 +21,9 @@ class BlockBuster {
         document.getElementById('new-game-btn').addEventListener('click', () => this.nextLevel());
         document.getElementById('reset-btn').addEventListener('click', () => this.resetGame());
         
+        this.focusedBlock = { x: 0, y: 0 };
+        document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+        
         this.init();
     }
     
@@ -64,6 +67,7 @@ class BlockBuster {
                     block.textContent = cell.value;
                     block.dataset.x = x;
                     block.dataset.y = y;
+                    block.tabIndex = 0;
                     block.addEventListener('click', () => this.onBlockClick(x, y));
                 } else {
                     block.classList.add('empty');
@@ -374,6 +378,53 @@ class BlockBuster {
         this.scoreEl.textContent = this.score;
         this.levelEl.textContent = this.level;
         this.movesEl.textContent = this.moves;
+    }
+    
+    handleKeyDown(e) {
+        const { x, y } = this.focusedBlock;
+        let newX = x;
+        let newY = y;
+        
+        switch (e.key) {
+            case 'ArrowUp':
+                newY = Math.max(0, y - 1);
+                e.preventDefault();
+                break;
+            case 'ArrowDown':
+                newY = Math.min(this.boardSize - 1, y + 1);
+                e.preventDefault();
+                break;
+            case 'ArrowLeft':
+                newX = Math.max(0, x - 1);
+                e.preventDefault();
+                break;
+            case 'ArrowRight':
+                newX = Math.min(this.boardSize - 1, x + 1);
+                e.preventDefault();
+                break;
+            case 'Enter':
+            case ' ':
+                this.onBlockClick(x, y);
+                e.preventDefault();
+                return;
+            case 'h':
+                this.showHint();
+                return;
+            default:
+                return;
+        }
+        
+        this.focusedBlock = { x: newX, y: newY };
+        this.updateFocus();
+    }
+    
+    updateFocus() {
+        this.boardEl.querySelectorAll('.focused').forEach(el => el.classList.remove('focused'));
+        const block = this.getBlockElement(this.focusedBlock.x, this.focusedBlock.y);
+        if (block) {
+            block.classList.add('focused');
+            block.focus();
+        }
     }
 }
 

@@ -123,6 +123,11 @@ main {
     z-index: 20;
 }
 
+.block.focused {
+    outline: 3px solid #fff;
+    outline-offset: 2px;
+}
+
 .block.hint {
     animation: hint-glow 1s infinite;
 }
