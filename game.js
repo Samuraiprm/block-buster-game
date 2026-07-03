@@ -31,7 +31,7 @@ class BlockBuster {
     
     generateBoard() {
         this.board = [];
-        const size = Math.min(this.boardSize + Math.floor(this.level / 3), 9);
+        const size = Math.min(6 + Math.floor(this.level / 3), 9);
         this.boardSize = size;
         
         for (let y = 0; y < size; y++) {
